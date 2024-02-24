@@ -10,13 +10,13 @@ const multer = require('multer');
 const uploadMiddleware = multer({ dest: 'uploads/' });
 const fs = require('fs');
 const Post = require('./models/Post');
-
+//const params =require('params');
 const app = express();
 const PORT = process.env.PORT || 4000;
 app.use(cors())
 app.use(express.json());
 app.use(cookieParser());
-
+app.use('/uploads', express.static(__dirname + '/uploads'));
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -129,7 +129,7 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
   const newPath = filePath + '.' + ext;
 
   fs.renameSync(filePath, newPath);
-  const token = req.body.password; 
+  const token = req.body.password;
   try {
     const decoded = jwt.verify(token, process.env.SECRET_KEY);
     const { title, summary, content } = req.body;
@@ -149,8 +149,18 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
 
 
 app.get('/postAll', async (req, res) => {
-  const posts = await Post.find();
+  const posts = await Post.find()
+    .populate('author', ['username'])
+    .sort({ createdAt: -1 })
+    .limit(20);
   res.json(posts);
+})
+
+app.get('/post/:id', async (req, res) => {
+  //req.json(req.params);
+  const { id } = req.params;
+  const postDoc = await Post.findById(id).populate('author', ['username']);
+  res.json(postDoc);
 })
 
 // Start the server
