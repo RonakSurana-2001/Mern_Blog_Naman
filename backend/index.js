@@ -6,12 +6,14 @@ const User = require('./models/User');
 const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const uploadMiddleware = multer({ dest: 'uploads/' });
+const fs = require('fs');
+const Post = require('./models/Post');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-
-// Middleware
-app.use(cors({ credentials: true, origin: 'http://localhost:3000' }));
+app.use(cors())
 app.use(express.json());
 app.use(cookieParser());
 
@@ -39,7 +41,7 @@ const PROFILE_ENDPOINT = '/profile';
 app.post(REGISTER_ENDPOINT, async (req, res) => {
   try {
     const { username, password } = req.body;
-
+    // console.log(req.body)
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
@@ -64,23 +66,23 @@ app.post(LOGIN_ENDPOINT, async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
+      return res.json({ error: 'Username and password are required' });
     }
 
     const user = await User.findOne({ username });
-
+    // console.log(user);
     if (!user) {
-      return res.status(401).json({ error: 'Invalid username or password' });
+      return res.json({ error: 'Invalid username or password' });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
-      return res.status(401).json({ error: 'Invalid username or password' });
+      return res.json({ error: 'Invalid username or password' });
     }
 
     const token = jwt.sign({ username, userId: user._id }, process.env.SECRET_KEY, { expiresIn: '1h' });
-    res.cookie('token', token, { httpOnly: true }).json({ id: user._id, user });
+    res.json({ token });
   } catch (error) {
     console.error('Error during login:', error);
     res.status(500).json({ error: `Internal Server Error: ${error.message}` });
@@ -94,28 +96,62 @@ app.post(LOGOUT_ENDPOINT, (req, res) => {
 });
 
 // Profile Endpoint
-app.get(PROFILE_ENDPOINT, (req, res) => {
-  try {
-    const token = req.cookies.token;
+app.post(PROFILE_ENDPOINT, (req, res) => {
+  // console.log("Profile Endpoint",req.body)
+  if (req.body.token !== 'undefined') {
+    try {
+      const token = req.body.token;
+      if (!token) {
+        return res.status(401).json({ error: 'Unauthorized: Missing token' });
+      }
 
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized: Missing token' });
+      const decoded = jwt.verify(token, process.env.SECRET_KEY);
+      const userId = decoded.userId;
+      // Log the decoded information for debugging
+      // console.log('Decoded Token:', decoded);
+
+      // In a real-world scenario, you'd fetch user information from the database based on userId
+      const user = { username: decoded.username };
+      // console.log(user)
+      res.json({ user });
+    } catch (error) {
+      console.error('Error during profile retrieval:', error);
+      res.status(500).json({ error: `Internal Server Error: ${error.message}` });
     }
-
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
-    const userId = decoded.userId;
-
-    // Log the decoded information for debugging
-    console.log('Decoded Token:', decoded);
-
-    // In a real-world scenario, you'd fetch user information from the database based on userId
-    const user = { username: 'demo_user' }; // Replace with actual user data
-    res.json({ user });
-  } catch (error) {
-    console.error('Error during profile retrieval:', error);
-    res.status(500).json({ error: `Internal Server Error: ${error.message}` });
   }
 });
+
+app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
+  const { originalname, path: filePath } = req.file;
+  const parts = originalname.split('.');
+  const ext = parts[parts.length - 1];
+
+  const newPath = filePath + '.' + ext;
+
+  fs.renameSync(filePath, newPath);
+  const token = req.body.password; 
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const { title, summary, content } = req.body;
+    const postDoc = await Post.create({
+      title,
+      summary,
+      content,
+      cover: newPath,
+      author: decoded.userId,
+    });
+    res.json(postDoc);
+  } catch (err) {
+    console.error(err);
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+});
+
+
+app.get('/postAll', async (req, res) => {
+  const posts = await Post.find();
+  res.json(posts);
+})
 
 // Start the server
 app.listen(PORT, () => {

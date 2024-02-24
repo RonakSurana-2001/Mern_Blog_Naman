@@ -1,52 +1,48 @@
 import React, { useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserContext } from './UserContext';
-// Import statements...
 
 const Header = () => {
-  const { setUserInfo, userInfo } = useContext(UserContext);
+  const { userInfo,setUserInfo } = useContext(UserContext);
   const navigate = useNavigate();
-
+  const username = localStorage.getItem("isLoggedIn");
   const fetchProfile = async () => {
-    try {
-      const response = await fetch('https://localhost:4000/profile', {
-        credentials: 'include',
-      });
+    if(username==true){
+      try {
+        const response = await fetch('http://localhost:4000/profile', {
+            method: 'POST',
+            body: JSON.stringify({ "token": localStorage.getItem("token") }),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        });
 
-      if (!response.ok) {
-        throw new Error(`Error fetching profile. Status: ${response.status}`);
-      }
+        if (!response.ok) {
+            throw new Error(`Error fetching profile. Status: ${response.status}`);
+        }
 
-      const userProfile = await response.json();
-      setUserInfo(userProfile);
+        const userProfile = await response.json();
+        setUserInfo(userProfile);
     } catch (error) {
-      console.error('Error fetching profile:', error.message);
+        console.error('Error fetching profile:', error);
     }
-  };
+    }
+};
 
-  useEffect(() => {
-    fetchProfile();
-  }, [setUserInfo]);
+  useEffect(()=>{
+      fetchProfile()
+  },[username])
 
   const logout = async () => {
     try {
-      const response = await fetch('https://localhost:4000/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Logout failed. Status: ${response.status}`);
-      }
-
       setUserInfo(null);
+      localStorage.setItem("isLoggedIn",false);
+      localStorage.clear();
       navigate('/');
     } catch (error) {
       console.error('Error during logout:', error.message);
     }
   };
-
-  const username = userInfo?.username;
 
   return (
     <header>

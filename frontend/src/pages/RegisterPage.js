@@ -24,6 +24,7 @@ const RegisterPage = () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
+
       if (!response.ok) {
         throw new Error(`Registration failed. Status: ${response.status}`);
       }

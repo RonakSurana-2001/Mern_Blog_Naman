@@ -2,7 +2,7 @@
 
 import React, { useState, useContext } from 'react';
 import { UserContext } from '../UserContext';
-
+import { Navigate, useNavigate } from 'react-router-dom';
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -10,36 +10,39 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [redirect, setRedirect] = useState(false);
   const { setUserInfo } = useContext(UserContext);
-
-  async function login(ev) {
-    ev.preventDefault();
+  let navigate=useNavigate()
+  async function login(event) {
+    event.preventDefault();
     setLoading(true);
-
     try {
       const response = await fetch('http://localhost:4000/login', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
       });
+      const userInfo = await response.json();
 
-      if (response.ok) {
-        const userInfo = await response.json();
+      if(userInfo.error=='Username and password are required'){
+        setError('Username and password are required')
+      }
+      else if (userInfo.error === 'Invalid username or password') {
+        setError('Invalid username or password');
+      } 
+      else {
         setUserInfo(userInfo);
+        localStorage.setItem("token", userInfo.token);
         setRedirect(true);
-      } else {
-        throw new Error(`Login failed. Status: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error during login:', error.message);
-      setError('Login failed. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('Error during login:', error);
+      setError('An unexpected error occurred'); // Set error message for unexpected errors
     }
+    setLoading(false);
   }
 
   if (redirect) {
-    window.location.href = '/';
+    localStorage.setItem("isLoggedIn",true)
+    window.location.href="/"
   }
 
   return (
