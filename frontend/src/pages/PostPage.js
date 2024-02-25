@@ -1,61 +1,73 @@
-import React, { useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-import { Navigate } from 'react-router-dom';
-//const navigate=Navigate();
-const modules = {
-  toolbar: [
-    [{ 'header': [1, 2, false] }],
-    ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
-    ['link', 'image'],
-    ['clean']
-  ],
-};
-const formats = [
-  'header',
-  'bold', 'italic', 'underline', 'strike', 'blockquote',
-  'list', 'bullet', 'indent',
-  'link', 'image'
-];
+// PostPage.js
+import React, { useContext, useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { formatISO9075 } from 'date-fns';
+import { UserContext } from '../UserContext';
 
-const CreatePost = () => {
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [content, setContent] = useState('');
-  const [files, setFiles] = useState(null);
-  const [redirect, setRedirect] = useState(false);
-  async function createNewPost(ev) {
-    const data = new FormData();
-    data.set("title", title);
-    data.set("summary", summary);
-    data.set("content", content);
-    data.set('file', files[0]);
-    data.set('password', localStorage.getItem("token"));
-    ev.preventDefault();
-    const response = await fetch('http://localhost:4000/post', {
-      method: 'POST',
-      body: data,
-      credentials: 'include',
-    });
-    if (response.ok) {
-      setRedirect(true);
-    }
+const PostPage = () => {
+  const [postInfo, setPostInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { userInfo } = useContext(UserContext);
+  const { id } = useParams();
+
+  useEffect(() => {
+    setLoading(true);
+
+    fetch(`http://localhost:4000/post/${id}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch post');
+        }
+        return response.json();
+      })
+      .then(postData => {
+        if (postData && postData.createdAt) {
+          setPostInfo({
+            ...postData,
+            createdAt: new Date(postData.createdAt),
+          });
+        }
+      })
+      .catch(error => {
+        console.error(error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [id]);
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
-  if (redirect) {
-    //navigate('/');
-    document.location.href='/';
+
+  if (!postInfo) {
+    return <div>Error loading post</div>;
   }
+
+  console.log('userInfo:', userInfo);
+
   return (
-    <form onSubmit={createNewPost}>
-      <input type='text' placeholder='Title' value={title} onChange={ev => setTitle(ev.target.value)} />
-      <input type='text' placeholder='Summary' value={summary} onChange={ev => setSummary(ev.target.value)} />
-      <input type='file' onChange={ev => setFiles(ev.target.files)} />
-      <ReactQuill value={content} onChange={newValue => setContent(newValue)} modules={modules} formats={formats} />
-      <button style={{ marginTop: "10px" }}>Create Post</button>
-    </form>
+    <div className='post-page'>
+      <h1>{postInfo.title}</h1>
+      <time>{formatISO9075(postInfo.createdAt)}</time>
+      <div className='author'>By {postInfo.author.username}</div>
+      {/* Add a check for userInfo before accessing id */}
+      {userInfo && userInfo.id && userInfo.id === postInfo.author._id && (
+        <div className='edit-row'>
+          <Link to={`/edit-post/${id}`} className='edit'>
+            Edit this post
+          </Link>
+        </div>
+      )}
+      <div className='image'>
+        <img src={`http://localhost:4000/${postInfo.cover}`} alt='' />
+      </div>
+      <div
+        className='content'
+        dangerouslySetInnerHTML={{ __html: postInfo.content }}
+      />
+    </div>
   );
-}
+};
 
-export default CreatePost;
-
+export default PostPage;

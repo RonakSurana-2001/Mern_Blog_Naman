@@ -145,6 +145,7 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
     console.error(err);
     res.status(401).json({ error: 'Unauthorized' });
   }
+  console.log("namansurana");
 });
 
 
