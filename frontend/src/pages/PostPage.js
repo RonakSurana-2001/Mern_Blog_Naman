@@ -46,26 +46,86 @@ const PostPage = () => {
 
   console.log('userInfo:', userInfo);
 
+  function postTitleEdit() {
+    let btn = document.getElementById("h1-title");
+    btn.addEventListener("click", function () {
+      this.contentEditable = "true";
+      this.focus();
+    });
+  
+    btn.addEventListener("blur", async function() {
+      this.contentEditable = "false";
+      let data = {
+        "toEdit": "title",
+        "value": this.innerText,
+        "id": id
+      };
+      try {
+        const response = await fetch('http://localhost:4000/post/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        const json = await response.json();
+      } catch (error) {
+        //console.error(error);
+      }
+    });  
+  }
+
+
+  function postContentEdit() {
+    let btn = document.getElementById("content");
+    btn.addEventListener("click", function () {
+      this.contentEditable = "true";
+      this.focus();
+    });
+  
+    btn.addEventListener("blur", async function() {
+      this.contentEditable = "false";
+      let data = {
+        "toEdit": "content",
+        "value": this.innerText,
+        "id": id
+      };
+      try {
+        const response = await fetch('http://localhost:4000/post/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        const json = await response.json();
+      } catch (error) {
+        //console.error(error);
+      }
+    });  
+  }
+
+
   return (
     <div className='post-page'>
-      <h1>{postInfo.title}</h1>
+      <h1 id="h1-title" onClick={postTitleEdit} contentEditable="true">{postInfo.title}</h1>
       <time>{formatISO9075(postInfo.createdAt)}</time>
       <div className='author'>By {postInfo.author.username}</div>
       {/* Add a check for userInfo before accessing id */}
-      {userInfo && userInfo.id && userInfo.id === postInfo.author._id && (
+      {/* {userInfo && userInfo.id && userInfo.id === postInfo.author._id && (
         <div className='edit-row'>
           <Link to={`/edit-post/${id}`} className='edit'>
             Edit this post
           </Link>
         </div>
-      )}
+      )} */}
       <div className='image'>
         <img src={`http://localhost:4000/${postInfo.cover}`} alt='' />
       </div>
       <div
-        className='content'
+        className='content' id='content'
         dangerouslySetInnerHTML={{ __html: postInfo.content }}
-      />
+        onClick={postContentEdit} contenteditable="true"/>
     </div>
   );
 };

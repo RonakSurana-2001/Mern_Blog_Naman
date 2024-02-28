@@ -164,6 +164,14 @@ app.get('/post/:id', async (req, res) => {
   res.json(postDoc);
 })
 
+app.post('/post/update',async (req,res)=>{
+  const {id,toEdit,value}=req.body;
+  const updateFields = {};
+  updateFields[toEdit] = value;
+  const postDoc = await Post.findByIdAndUpdate(id,updateFields, { new: true });
+  res.json(postDoc);
+})
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
