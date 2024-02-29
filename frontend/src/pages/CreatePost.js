@@ -41,6 +41,7 @@ const CreatePost = () => {
       setRedirect(true);
     }
   }
+  
   if (redirect) {
     //navigate('/');
     document.location.href='/';

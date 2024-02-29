@@ -10,6 +10,7 @@ const multer = require('multer');
 const uploadMiddleware = multer({ dest: 'uploads/' });
 const fs = require('fs');
 const Post = require('./models/Post');
+const { decode } = require('punycode');
 //const params =require('params');
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -97,7 +98,6 @@ app.post(LOGOUT_ENDPOINT, (req, res) => {
 
 // Profile Endpoint
 app.post(PROFILE_ENDPOINT, (req, res) => {
-  // console.log("Profile Endpoint",req.body)
   if (req.body.token !== 'undefined') {
     try {
       const token = req.body.token;
@@ -107,13 +107,8 @@ app.post(PROFILE_ENDPOINT, (req, res) => {
 
       const decoded = jwt.verify(token, process.env.SECRET_KEY);
       const userId = decoded.userId;
-      // Log the decoded information for debugging
-      // console.log('Decoded Token:', decoded);
-
-      // In a real-world scenario, you'd fetch user information from the database based on userId
       const user = { username: decoded.username };
-      // console.log(user)
-      res.json({ user });
+      res.json({ user,userId});
     } catch (error) {
       console.error('Error during profile retrieval:', error);
       res.status(500).json({ error: `Internal Server Error: ${error.message}` });
@@ -123,12 +118,16 @@ app.post(PROFILE_ENDPOINT, (req, res) => {
 
 app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
   const { originalname, path: filePath } = req.file;
+  console.log(req.file)
   const parts = originalname.split('.');
   const ext = parts[parts.length - 1];
 
   const newPath = filePath + '.' + ext;
 
   fs.renameSync(filePath, newPath);
+
+  console.log(originalname,filePath,ext,newPath);
+
   const token = req.body.password;
   try {
     const decoded = jwt.verify(token, process.env.SECRET_KEY);
@@ -145,7 +144,6 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
     console.error(err);
     res.status(401).json({ error: 'Unauthorized' });
   }
-  console.log("namansurana");
 });
 
 
